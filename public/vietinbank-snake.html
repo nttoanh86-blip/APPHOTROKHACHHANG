@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>VietinBank Snake Challenge</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: #0f172a; color: #ffffff; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 16px; }
+    .card { background: #1e293b; border-radius: 20px; border: 1px solid #334155; width: 100%; max-width: 440px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5); }
+    .header { background: #003B70; padding: 16px 20px; border-bottom: 2px solid #ED1C24; display: flex; justify-content: space-between; align-items: center; }
+    .header h1 { font-size: 18px; font-weight: 800; color: #fff; }
+    .header p { font-size: 12px; color: #bae6fd; }
+    .stats { display: flex; justify-content: space-between; padding: 10px 20px; background: #0f172a; font-size: 13px; border-bottom: 1px solid #334155; }
+    .score { color: #34d399; font-weight: 700; font-family: monospace; font-size: 16px; }
+    .canvas-container { position: relative; display: flex; justify-content: center; background: #020617; padding: 16px; }
+    canvas { background: #0f172a; border-radius: 12px; border: 2px solid #334155; }
+    .overlay { position: absolute; inset: 16px; background: rgba(15, 23, 42, 0.9); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; }
+    .btn { background: #ED1C24; color: white; border: none; padding: 12px 24px; border-radius: 12px; font-weight: 700; font-size: 14px; cursor: pointer; transition: 0.2s; }
+    .btn:hover { background: #b91c1c; }
+    .btn-secondary { background: #005baa; margin-top: 10px; }
+    .rules { font-size: 12px; color: #cbd5e1; text-align: left; line-height: 1.6; margin: 12px 0 16px; }
+    .receipt { background: white; color: #0f172a; border-radius: 12px; padding: 16px; width: 100%; max-width: 320px; text-align: left; font-size: 12px; box-shadow: 0 10px 15px rgba(0,0,0,0.3); }
+    .receipt h2 { color: #003B70; font-size: 15px; margin-bottom: 8px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 6px; }
+    .receipt-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
+    .receipt-row strong { font-weight: 700; color: #000; }
+    .voucher-banner { font-size: 12px; padding: 8px 12px; border-radius: 8px; margin: 6px 0; background: #fef3c7; color: #92400e; border: 1px solid #fde68a; font-weight: 600; }
+    .d-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 160px; margin: 14px auto 8px; }
+    .d-btn { height: 44px; background: #334155; border: none; border-radius: 8px; color: white; font-size: 18px; cursor: pointer; }
+    .d-btn:active { background: #005baa; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <div>
+        <h1>VietinBank Snake Challenge</h1>
+        <p>Chơi vui tại quầy – Săn voucher xăng hấp dẫn</p>
+      </div>
+      <div style="text-align: right;">
+        <span style="font-size: 10px; color: #94a3b8; display: block;">Kỷ lục</span>
+        <span id="highScoreText" style="font-size: 14px; font-weight: bold; color: #fbbf24;">0</span>
+      </div>
+    </div>
+
+    <div class="stats">
+      <span>Điểm: <strong id="scoreText" class="score">0</strong></span>
+      <span id="tierLabel" style="color: #94a3b8;">Cần 20đ để nhận quà</span>
+    </div>
+
+    <div class="canvas-container">
+      <canvas id="gameCanvas" width="320" height="320"></canvas>
+
+      <!-- Start Overlay -->
+      <div id="startOverlay" class="overlay">
+        <h2 style="font-size: 20px; font-weight: 800; color: #fbbf24; margin-bottom: 8px;">VietinBank Snake</h2>
+        <div class="rules">
+          • Dùng phím mũi tên hoặc nút ảo để điều khiển rắn.<br>
+          • Ăn vật phẩm để cộng 1 điểm.<br>
+          • Đạt 20 điểm nhận 01 voucher 2 lít xăng.<br>
+          • Đạt 40 điểm nhận 02 voucher 2 lít xăng.
+        </div>
+        <button id="startBtn" class="btn">BẮT ĐẦU CHƠI</button>
+      </div>
+
+      <!-- Result Overlay -->
+      <div id="endOverlay" class="overlay" style="display: none;">
+        <div class="receipt">
+          <h2>PHIẾU XÁC NHẬN QUÀ TẶNG</h2>
+          <div class="receipt-row"><span>Điểm cuối cùng:</span><strong id="finalScore">0</strong></div>
+          <div class="receipt-row"><span>Mức quà đạt được:</span><strong id="rewardTier">Chưa đủ mốc</strong></div>
+          <div class="receipt-row"><span>Mã xác nhận:</span><strong id="vCode" style="font-family: monospace; color: #003B70;">-</strong></div>
+          <div class="receipt-row"><span>Thời gian:</span><span id="timeCompleted" style="font-size: 11px;">-</span></div>
+          <div class="voucher-banner">
+            Vui lòng chụp màn hình hoặc thông báo với giao dịch viên để nhận quà.
+          </div>
+        </div>
+        <button id="restartBtn" class="btn btn-secondary">Chơi lại</button>
+      </div>
+    </div>
+
+    <!-- Virtual D-pad -->
+    <div style="padding: 10px; background: #0f172a; text-align: center;">
+      <div class="d-pad">
+        <div></div>
+        <button class="d-btn" onclick="setDir('UP')">▲</button>
+        <div></div>
+        <button class="d-btn" onclick="setDir('LEFT')">◀</button>
+        <button class="d-btn" onclick="setDir('DOWN')">▼</button>
+        <button class="d-btn" onclick="setDir('RIGHT')">▶</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const GRID = 20;
+    const TILE = 16;
+    let snake = [{x: 10, y: 10}, {x: 9, y: 10}, {x: 8, y: 10}];
+    let food = {x: 15, y: 10};
+    let dir = 'RIGHT';
+    let nextDir = 'RIGHT';
+    let score = 0;
+    let highScore = parseInt(localStorage.getItem('vb_snake_high') || '0', 10);
+    let gameInterval = null;
+    let isRunning = false;
+
+    document.getElementById('highScoreText').innerText = highScore;
+
+    function setDir(d) {
+      if (d === 'UP' && dir !== 'DOWN') nextDir = 'UP';
+      if (d === 'DOWN' && dir !== 'UP') nextDir = 'DOWN';
+      if (d === 'LEFT' && dir !== 'RIGHT') nextDir = 'LEFT';
+      if (d === 'RIGHT' && dir !== 'LEFT') nextDir = 'RIGHT';
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowUp') setDir('UP');
+      if (e.key === 'ArrowDown') setDir('DOWN');
+      if (e.key === 'ArrowLeft') setDir('LEFT');
+      if (e.key === 'ArrowRight') setDir('RIGHT');
+    });
+
+    function spawnFood() {
+      food = {
+        x: Math.floor(Math.random() * GRID),
+        y: Math.floor(Math.random() * GRID)
+      };
+    }
+
+    function startGame() {
+      snake = [{x: 10, y: 10}, {x: 9, y: 10}, {x: 8, y: 10}];
+      dir = 'RIGHT';
+      nextDir = 'RIGHT';
+      score = 0;
+      updateScoreUI();
+      spawnFood();
+      document.getElementById('startOverlay').style.display = 'none';
+      document.getElementById('endOverlay').style.display = 'none';
+      isRunning = true;
+      clearInterval(gameInterval);
+      gameInterval = setInterval(gameLoop, 120);
+    }
+
+    function updateScoreUI() {
+      document.getElementById('scoreText').innerText = score;
+      const tierEl = document.getElementById('tierLabel');
+      if (score >= 40) {
+        tierEl.innerText = '02 Voucher xăng 2L!';
+        tierEl.style.color = '#fbbf24';
+      } else if (score >= 20) {
+        tierEl.innerText = '01 Voucher xăng 2L!';
+        tierEl.style.color = '#34d399';
+      } else {
+        tierEl.innerText = 'Cần 20đ để nhận quà';
+        tierEl.style.color = '#94a3b8';
+      }
+    }
+
+    function endGame() {
+      clearInterval(gameInterval);
+      isRunning = false;
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('vb_snake_high', highScore);
+        document.getElementById('highScoreText').innerText = highScore;
+      }
+
+      document.getElementById('finalScore').innerText = score + ' điểm';
+      let tier = 'Rất tiếc, chưa đạt mốc voucher (cần 20đ)';
+      let code = '-';
+      if (score >= 40) {
+        tier = '02 voucher xăng (2 lít/voucher)';
+        code = 'VB-' + Math.floor(100000 + Math.random() * 900000);
+      } else if (score >= 20) {
+        tier = '01 voucher xăng 2 lít';
+        code = 'VB-' + Math.floor(100000 + Math.random() * 900000);
+      }
+
+      document.getElementById('rewardTier').innerText = tier;
+      document.getElementById('vCode').innerText = code;
+      document.getElementById('timeCompleted').innerText = new Date().toLocaleTimeString('vi-VN');
+      document.getElementById('endOverlay').style.display = 'flex';
+    }
+
+    function gameLoop() {
+      dir = nextDir;
+      const head = { ...snake[0] };
+      if (dir === 'UP') head.y--;
+      if (dir === 'DOWN') head.y++;
+      if (dir === 'LEFT') head.x--;
+      if (dir === 'RIGHT') head.x++;
+
+      if (head.x < 0 || head.x >= GRID || head.y < 0 || head.y >= GRID) {
+        return endGame();
+      }
+      for (let p of snake) {
+        if (head.x === p.x && head.y === p.y) return endGame();
+      }
+
+      snake.unshift(head);
+      if (head.x === food.x && head.y === food.y) {
+        score++;
+        updateScoreUI();
+        spawnFood();
+      } else {
+        snake.pop();
+      }
+
+      // Draw
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Food
+      ctx.fillStyle = '#f59e0b';
+      ctx.beginPath();
+      ctx.arc(food.x * TILE + TILE/2, food.y * TILE + TILE/2, TILE/2.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Snake
+      snake.forEach((part, idx) => {
+        ctx.fillStyle = idx === 0 ? '#005baa' : '#38bdf8';
+        ctx.fillRect(part.x * TILE + 1, part.y * TILE + 1, TILE - 2, TILE - 2);
+      });
+    }
+
+    document.getElementById('startBtn').addEventListener('click', startGame);
+    document.getElementById('restartBtn').addEventListener('click', startGame);
+  </script>
+</body>
+</html>
